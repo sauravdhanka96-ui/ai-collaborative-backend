@@ -1,0 +1,56 @@
+"""
+ORM models for NexusCollaborate AI.
+Uses pgvector column type for embedding storage.
+"""
+
+import uuid
+from datetime import datetime
+from sqlalchemy import String, Text, DateTime, ForeignKey, Integer, JSON
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import UUID
+from pgvector.sqlalchemy import Vector
+
+from app.db.postgres import Base
+from app.core.config import settings
+
+
+class CollabSession(Base):
+    __tablename__ = "collab_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    owner_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+
+    documents: Mapped[list["Document"]] = relationship("Document", back_populates="session", cascade="all, delete")
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("collab_sessions.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    content: Mapped[str] = mapped_column(Text, default="")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    session: Mapped["CollabSession"] = relationship("CollabSession", back_populates="documents")
+    chunks: Mapped[list["DocumentChunk"]] = relationship("DocumentChunk", back_populates="document", cascade="all, delete")
+
+
+class DocumentChunk(Base):
+    """Stores chunked document content with vector embeddings for RAG retrieval."""
+    __tablename__ = "document_chunks"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"))
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(settings.VECTOR_DIMENSION))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    document: Mapped["Document"] = relationship("Document", back_populates="chunks")
