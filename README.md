@@ -1,25 +1,29 @@
-"""Health and readiness probe endpoints."""
+# AI-Collaborative Backend
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+AI-native backend for real-time collaborative applications — featuring WebSocket-based multi-user synchronization and a RAG (Retrieval-Augmented Generation) pipeline powered by PostgreSQL and pgvector.
 
-from app.db.postgres import get_db
-from app.services.collaboration.ws_manager import manager
+---
 
-router = APIRouter()
+## What It Does
 
+- **Real-time collaboration** — multiple users connect simultaneously via WebSockets; shared session state stays consistent across all clients
+- **AI assistance** — a RAG pipeline retrieves context from stored embeddings (pgvector) and delivers context-aware AI responses
+- **Health & readiness probes** — `/health` and `/ready` endpoints report system status and active WebSocket session count
 
-@router.get("/")
-async def health():
-    return {"status": "ok"}
+---
 
+## Tech Stack
 
-@router.get("/ready")
-async def readiness(db: AsyncSession = Depends(get_db)):
-    """Checks DB connectivity and reports active WebSocket sessions."""
-    await db.execute(text("SELECT 1"))
-    return {
-        "status": "ready",
-        "active_sessions": manager.session_count(),
-    }
+| Layer | Technology |
+|---|---|
+| Language | Python 3.11 |
+| Framework | FastAPI |
+| Real-time | WebSockets |
+| Database | PostgreSQL + pgvector |
+| ORM | SQLAlchemy (async) |
+| AI Pipeline | RAG (Retrieval-Augmented Generation) |
+| Containerization | Docker |
+
+---
+
+## Project Structure
